@@ -9,6 +9,40 @@ contract SpendingLimit {
     address private constant SAFE_ADDRESS = 0x987654321; // Replace with the Gnosis Safe contract address
     address private constant OWNER_ADDRESS = 0x111111111; // Replace with the owner's address
 
+    struct Limit {
+        uint256 amount; // the maximum amount that can be spent during the given period
+        uint256 periodStart; // the start of the current period
+        uint256 lastSpent; // the timestamp of the last spend
+    }
+
+    mapping(address => mapping(address => Limit)) public limits;
+
+    function setLimit(address token, uint256 amount, uint256 period) external {
+        require(amount > 0, "Amount must be greater than zero");
+        limits[msg.sender][token].amount = amount;
+        limits[msg.sender][token].periodStart = block.timestamp;
+        limits[msg.sender][token].lastSpent = block.timestamp;
+    }
+
+    function spend(address token, uint256 amount) external {
+        Limit storage limit = limits[msg.sender][token];
+        require(amount <= limit.amount, "Amount exceeds spending limit");
+
+        uint256 currentPeriod = (block.timestamp - limit.periodStart) / period;
+        if (currentPeriod > 0) {
+            limit.amount = limit.amount - (limit.amount * currentPeriod);
+            limit.periodStart = block.timestamp;
+        }
+
+        require(amount <= limit.amount, "Amount exceeds spending limit");
+        require(IERC20(token).allowance(msg.sender, address(this)) >= amount, "Insufficient allowance");
+        require(IERC20(token).balanceOf(msg.sender) >= amount, "Insufficient balance");
+
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        limit.amount = limit.amount - amount;
+        limit.lastSpent = block.timestamp;
+    }
+
     //Makes normal calls to gnosis safe for transfering an erc20 token
     function transferTokens(address _recipient, uint256 _amount) public {
         IERC20 token = IERC20(TOKEN_ADDRESS);
