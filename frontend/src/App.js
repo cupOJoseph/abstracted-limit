@@ -1,10 +1,14 @@
 import logo from "./logo.svg";
 
-import { SafeAppsSDK } from "@gnosis.pm/safe-apps-sdk";
+import Safe, {
+  SafeFactory,
+  SafeAccountConfig,
+} from "@safe-global/safe-core-sdk";
 import Web3 from "web3";
 import "./App.css";
 
 function App() {
+  //const safeFactory = await SafeFactory.create({ ethAdapter })
   const connectWallet = async () => {
     if (window.ethereum) {
       try {
